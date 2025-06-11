@@ -1,0 +1,35 @@
+name: lint
+on: [pull_request]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  lint:
+    timeout-minutes: 10
+    if: github.event.pull_request.draft == false
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      # - uses: actions/checkout@v100 # This is commented out
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2 # Some comment
+      - uses: "actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744" # v3.6.0
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2 # v5.4.2
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+        with:
+          go-version: stable
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@1481404843c368bc19ca9406f87d6e0fc97bdcfd # v7.0.0
+        with:
+          version: v2.0
+          only-new-issues: true
+      - name: With subdirectory
+        uses: oasdiff/oasdiff-action/diff@1c611ffb1253a72924624aa4fb662e302b3565d3 # v0.0.21
+  call-gha-lint:
+    permissions:
+      contents: write
+      pull-requests: write
+    # Use `--ignore-owners Finatxt` to ignnore this
+    uses: Finatext/workflows-public/.github/workflows/gha-lint.yml@main
+    secrets: inherit

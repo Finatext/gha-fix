@@ -1,0 +1,35 @@
+name: Test for fixing timeout issue
+on:
+  workflow_call:
+    inputs:
+      timeout:
+        required: false
+        type: number
+        default: 2
+
+jobs:
+  with-timeout:
+    timeout-minutes: ${{ inputs.timeout }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait
+        # shell: bash
+        run: |
+          for i in {1..180}; do
+            echo "${i}"
+            sleep 1
+          done
+  without-timeout:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+  # Calling reusable workflow does not support timeout-minutes
+  call-gha-lint:
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: Finatext/workflows-public/.github/workflows/gha-lint.yml@main
+    secrets: inherit
+
+# random comment

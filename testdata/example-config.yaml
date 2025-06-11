@@ -1,0 +1,9 @@
+# Global configuration
+ignore-dirs:
+  - .git
+  - node_modules
+  - vendor
+
+pin:
+  ignore-owners:
+    - Finatext
