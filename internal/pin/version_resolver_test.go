@@ -8,6 +8,7 @@ import (
 	"github.com/golang/mock/gomock"
 	gogithub "github.com/google/go-github/v72/github"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVersionResolver_ResolveVersion(t *testing.T) {
@@ -16,28 +17,28 @@ func TestVersionResolver_ResolveVersion(t *testing.T) {
 		defer ctrl.Finish()
 
 		mockRepo := NewMockRepositoryService(ctrl)
-		
+
 		// Setup the mock to expect only ONE call
 		mockRepo.EXPECT().
 			GetCommitSHA1(gomock.Any(), "actions", "checkout", "main", "").
 			Return("11bd71901bbe5b1630ceea73d27597364c9af683", &gogithub.Response{}, nil).Times(1)
 
 		resolver := NewVersionResolver(mockRepo)
-		
+
 		// First call should hit the API
 		def := ActionDef{
 			Owner:    "actions",
 			Repo:     "checkout",
 			RefOrSHA: "main",
 		}
-		
+
 		result1, err := resolver.ResolveVersion(context.Background(), def)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "11bd71901bbe5b1630ceea73d27597364c9af683", result1.CommitSHA)
 
 		// Second call should use cache (mock won't be called again)
 		result2, err := resolver.ResolveVersion(context.Background(), def)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, result1.CommitSHA, result2.CommitSHA)
 		assert.Equal(t, result1.RefComment, result2.RefComment)
 	})
@@ -47,7 +48,7 @@ func TestVersionResolver_ResolveVersion(t *testing.T) {
 		defer ctrl.Finish()
 
 		mockRepo := NewMockRepositoryService(ctrl)
-		
+
 		// Mock list tags response (should be called only once)
 		tags := []*gogithub.RepositoryTag{
 			createTag("v4.0.0", "sha1"),
@@ -60,26 +61,25 @@ func TestVersionResolver_ResolveVersion(t *testing.T) {
 			Return(tags, &gogithub.Response{NextPage: 0}, nil).Times(1)
 
 		resolver := NewVersionResolver(mockRepo)
-		
+
 		def := ActionDef{
 			Owner:    "actions",
 			Repo:     "checkout",
 			RefOrSHA: "v4",
 		}
-		
+
 		// First call should hit the API
 		result1, err := resolver.ResolveVersion(context.Background(), def)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "sha3", result1.CommitSHA) // v4.1.1 is the latest v4 tag
 		assert.Equal(t, "v4.1.1", result1.RefComment)
 
 		// Second call should use cache (mock won't be called again)
 		result2, err := resolver.ResolveVersion(context.Background(), def)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, result1.CommitSHA, result2.CommitSHA)
 		assert.Equal(t, result1.RefComment, result2.RefComment)
 	})
-
 
 	tests := []struct {
 		name      string
@@ -169,7 +169,7 @@ func TestVersionResolver_ResolveVersion(t *testing.T) {
 			resolver := NewVersionResolver(mockRepo)
 
 			result, err := resolver.ResolveVersion(context.Background(), tt.actionDef)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected.CommitSHA, result.CommitSHA)
 			assert.Equal(t, tt.expected.RefComment, result.RefComment)
 		})
@@ -201,7 +201,7 @@ func TestVersionResolver_listSemverTagsAll(t *testing.T) {
 
 	tags, err := resolver.listSemverTagsAll(context.Background(), "owner", "repo")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, tags, 3) // only semver tags should be included
 
 	// Verify the tags are correctly parsed
@@ -277,13 +277,13 @@ func TestFindLatestTag(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Parse the version
-			version, err := createSemverVersion(tt.version)
-			assert.NoError(t, err)
+			version, err := semver.NewVersion(tt.version)
+			require.NoError(t, err)
 
 			// Create semver tags
 			var tags []semverTag
 			for _, tagStr := range tt.tags {
-				semver, _ := createSemverVersion(tagStr)
+				semver, _ := semver.NewVersion(tagStr)
 				if semver != nil {
 					tags = append(tags, semverTag{
 						gogithubTag: gogithub.RepositoryTag{Name: &tagStr},
@@ -300,7 +300,7 @@ func TestFindLatestTag(t *testing.T) {
 				return
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expectedTag, *result.gogithubTag.Name)
 		})
 	}
@@ -314,9 +314,4 @@ func createTag(name, sha string) *gogithub.RepositoryTag {
 			SHA: &sha,
 		},
 	}
-}
-
-// Helper function to create semver version
-func createSemverVersion(version string) (*semver.Version, error) {
-	return semver.NewVersion(version)
 }
