@@ -167,11 +167,12 @@ func getPositions(file *ast.File) []position {
 								continue
 							}
 							propKey := getKeyString(prop.Key)
-							if propKey == "runs-on" {
+							switch propKey {
+							case "runs-on":
 								hasRunsOn = true
-							} else if propKey == "timeout-minutes" {
+							case "timeout-minutes":
 								hasTimeout = true
-							} else if propKey == "uses" {
+							case "uses":
 								hasUses = true
 							}
 						}
