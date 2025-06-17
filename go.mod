@@ -6,7 +6,6 @@ require (
 	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/cockroachdb/errors v1.12.0
 	github.com/goccy/go-yaml v1.18.0
-	github.com/golang/mock v1.6.0
 	github.com/google/go-github/v72 v72.0.0
 	github.com/phsym/console-slog v0.3.1
 	github.com/spf13/cobra v1.9.1
