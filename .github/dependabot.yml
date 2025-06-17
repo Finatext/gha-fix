@@ -1,0 +1,23 @@
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      time: "12:00"
+      timezone: "Asia/Tokyo"
+    # To avoid lock file conflicts, group all updates together.
+    groups:
+      gomod-all:
+        patterns:
+          - "*"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      time: "12:00"
+      timezone: "Asia/Tokyo"
+    groups:
+      github-actions-all:
+        patterns:
+          - "*"
