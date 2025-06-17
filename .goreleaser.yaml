@@ -9,6 +9,7 @@ builds:
       - linux
       - windows
       - darwin
+    main: ./cmd/gha-fix
 
 archives:
   - formats: [tar.gz]

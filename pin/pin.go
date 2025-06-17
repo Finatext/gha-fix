@@ -3,32 +3,43 @@ package pin
 import (
 	"context"
 	"regexp"
+	"slices"
 	"strings"
 
-	"slices"
-
 	"github.com/cockroachdb/errors"
+	gogithub "github.com/google/go-github/v72/github"
+
+	"github.com/Finatext/gha-fix/internal/pin"
 )
 
-type Resolver interface {
-	ResolveVersion(ctx context.Context, def ActionDef) (ResolvedVersion, error)
+type resolver interface {
+	ResolveVersion(ctx context.Context, def pin.ActionDef) (pin.ResolvedVersion, error)
 }
 
-type Replacer struct {
-	Resolver     Resolver
-	IgnoreOwners []string
-	IgnoreRepos  []string
+type Pin struct {
+	resolver     resolver
+	ignoreOwners []string
+	ignoreRepos  []string
 }
 
-// Replace replaces input YAML content then returns the modified content, a boolean indicating if any replacements were
+func NewPin(client *gogithub.Client, ignoreOwners, ignoreRepos []string) Pin {
+	resolver := pin.NewVersionResolver(client.Repositories)
+	return Pin{
+		resolver:     &resolver,
+		ignoreOwners: ignoreOwners,
+		ignoreRepos:  ignoreRepos,
+	}
+}
+
+// Apply replaces input YAML content then returns the modified content, a boolean indicating if any replacements were
 // made, and an error if any occurred.
-func (r *Replacer) Replace(ctx context.Context, input string) (string, bool, error) {
+func (p *Pin) Apply(ctx context.Context, input string) (string, bool, error) {
 	lines := strings.Split(input, "\n")
 
 	changed := false
 	resultLines := make([]string, 0, len(lines))
 	for _, line := range lines {
-		modifiedLine, lineChanged, err := r.replaceLine(ctx, line)
+		modifiedLine, lineChanged, err := p.replaceLine(ctx, line)
 		if err != nil {
 			return "", false, err
 		}
@@ -46,18 +57,18 @@ func (r *Replacer) Replace(ctx context.Context, input string) (string, bool, err
 	return output, changed, nil
 }
 
-func (r *Replacer) replaceLine(ctx context.Context, line string) (string, bool, error) {
+func (p *Pin) replaceLine(ctx context.Context, line string) (string, bool, error) {
 	parsed, ok := parseLine(line)
 	if !ok {
 		return line, false, nil // No action definition found, return the line unchanged
 	}
 	def := parsed.def
 
-	if slices.Contains(r.IgnoreOwners, def.Owner) {
+	if slices.Contains(p.ignoreOwners, def.Owner) {
 		return line, false, nil
 	}
 	repoKey := def.Owner + "/" + def.Repo
-	if slices.Contains(r.IgnoreRepos, repoKey) {
+	if slices.Contains(p.ignoreRepos, repoKey) {
 		return line, false, nil
 	}
 
@@ -65,9 +76,9 @@ func (r *Replacer) replaceLine(ctx context.Context, line string) (string, bool, 
 		return line, false, nil
 	}
 
-	resolved, err := r.Resolver.ResolveVersion(ctx, def)
+	resolved, err := p.resolver.ResolveVersion(ctx, def)
 	if err != nil {
-		if errors.Is(err, AlreadyResolvedError) {
+		if errors.Is(err, pin.AlreadyResolvedError) {
 			return line, false, nil
 		}
 		return "", false, errors.Wrapf(err, "failed to resolve version for %s/%s@%s", def.Owner, def.Repo, def.RefOrSHA)
@@ -91,8 +102,8 @@ func (r *Replacer) replaceLine(ctx context.Context, line string) (string, bool, 
 	return newLine, true, nil
 }
 
-type ParsedLine struct {
-	def        ActionDef
+type parsedLine struct {
+	def        pin.ActionDef
 	prefix     string
 	openQuote  string // Opening quote if any (e.g., '"' or ''')
 	closeQuote string // Closing quote if any (should match openQuote)
@@ -120,16 +131,16 @@ var usesPattern = regexp.MustCompile(`^([-\s]*(?:["']?uses["']?:\s+))(["']?)([^/
 // 8: closing quote (if any)
 // 9: suffix (comments, etc.)
 
-func parseLine(line string) (ParsedLine, bool) {
+func parseLine(line string) (parsedLine, bool) {
 	// Check for leading comments
 	trimmed := strings.TrimSpace(line)
 	if len(trimmed) > 0 && trimmed[0] == '#' {
-		return ParsedLine{}, false
+		return parsedLine{}, false
 	}
 
 	matches := usesPattern.FindStringSubmatch(line)
 	if matches == nil {
-		return ParsedLine{}, false
+		return parsedLine{}, false
 	}
 
 	// Capture components from regex match
@@ -150,14 +161,14 @@ func parseLine(line string) (ParsedLine, bool) {
 		comment = strings.TrimSpace(suffix[commentIdx:])
 	}
 
-	def := ActionDef{
+	def := pin.ActionDef{
 		Owner:    owner,
 		Repo:     repo,
 		Path:     path,
 		RefOrSHA: refOrSHA,
 	}
 
-	return ParsedLine{
+	return parsedLine{
 		def:        def,
 		prefix:     prefix,
 		openQuote:  openQuote,

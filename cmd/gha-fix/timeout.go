@@ -1,11 +1,11 @@
-package cmd
+package main
 
 import (
 	"context"
 	"log/slog"
 	"os"
 
-	"github.com/Finatext/gha-fix/pkg/timeout"
+	ghafix "github.com/Finatext/gha-fix"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -53,12 +53,12 @@ Example:
 			os.Exit(1)
 		}
 
-		t := timeout.NewTimeout(timeout.Options{
+		timeoutCmd := ghafix.NewTimeoutCommand(ghafix.TimeoutOptions{
 			IgnoreDirs:     ignoreDirs,
 			TimeoutMinutes: timeoutValue,
 		})
 
-		result, err := t.Fix(ctx, args)
+		result, err := timeoutCmd.Run(ctx, args)
 		if err != nil {
 			slog.Error("failed to add timeouts", "error", err)
 			os.Exit(1)

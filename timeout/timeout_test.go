@@ -12,13 +12,13 @@ import (
 )
 
 func TestFixer_Fix_Integration(t *testing.T) {
-	input, err := os.ReadFile("../../testdata/timeout.yml")
+	input, err := os.ReadFile("../testdata/timeout.yml")
 	require.NoError(t, err)
-	expected, err := os.ReadFile("../../testdata/timeout-after.yml")
+	expected, err := os.ReadFile("../testdata/timeout-after.yml")
 	require.NoError(t, err)
 
-	f := Fixer{TimeoutMinutes: 5}
-	got, changed, err := f.Fix(context.Background(), string(input))
+	f := Timeout{timeoutMinutes: 5}
+	got, changed, err := f.Insert(context.Background(), string(input))
 	require.NoError(t, err)
 
 	assert.True(t, changed)
@@ -145,8 +145,8 @@ config:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := Fixer{TimeoutMinutes: tt.timeoutMinutes}
-			got, changed, err := f.Fix(context.Background(), tt.input)
+			f := Timeout{timeoutMinutes: tt.timeoutMinutes}
+			got, changed, err := f.Insert(context.Background(), tt.input)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -245,8 +245,8 @@ func TestFixer_Fix_MultipleJobs(t *testing.T) {
   reusable:
     uses: owner/repo/.github/workflows/workflow.yml@main`
 
-	f := Fixer{TimeoutMinutes: 5}
-	got, changed, err := f.Fix(context.Background(), input)
+	f := Timeout{timeoutMinutes: 5}
+	got, changed, err := f.Insert(context.Background(), input)
 	require.NoError(t, err)
 	assert.True(t, changed)
 	assert.Equal(t, expected, got)
@@ -257,8 +257,8 @@ func TestFixer_Fix_FlowStyle(t *testing.T) {
 	input := `jobs:
   flow-job: { runs-on: ubuntu-latest, steps: [ { run: echo test } ] }`
 
-	f := Fixer{TimeoutMinutes: 5}
-	got, changed, err := f.Fix(context.Background(), input)
+	f := Timeout{timeoutMinutes: 5}
+	got, changed, err := f.Insert(context.Background(), input)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, ErrFlowStyleNotSupported))
 	assert.False(t, changed)
@@ -270,8 +270,8 @@ func TestFixer_Fix_CompactJobSyntax(t *testing.T) {
 	input := `jobs:
   compact:runs-on: ubuntu-latest`
 
-	f := Fixer{TimeoutMinutes: 5}
-	_, _, err := f.Fix(context.Background(), input)
+	f := Timeout{timeoutMinutes: 5}
+	_, _, err := f.Insert(context.Background(), input)
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, ErrCompactJobSyntaxNotSupported))
 }
@@ -297,8 +297,8 @@ func TestFixer_Fix_EmptyJobs(t *testing.T) {
     timeout-minutes: 5
     runs-on: ubuntu-latest`
 
-	f := Fixer{TimeoutMinutes: 5}
-	got, changed, err := f.Fix(context.Background(), input)
+	f := Timeout{timeoutMinutes: 5}
+	got, changed, err := f.Insert(context.Background(), input)
 	require.NoError(t, err)
 	assert.True(t, changed)
 	assert.Equal(t, expected, got)
@@ -327,8 +327,8 @@ func TestFixer_Fix_TimeoutWithExpression(t *testing.T) {
     timeout-minutes: 5
     runs-on: ubuntu-latest`
 
-	f := Fixer{TimeoutMinutes: 5}
-	got, changed, err := f.Fix(context.Background(), input)
+	f := Timeout{timeoutMinutes: 5}
+	got, changed, err := f.Insert(context.Background(), input)
 	require.NoError(t, err)
 	assert.True(t, changed)
 	assert.Equal(t, expected, got)
@@ -346,8 +346,8 @@ func TestFixer_Fix_SpecialJobNames(t *testing.T) {
   job_with_underscores:
     runs-on: ubuntu-latest`
 
-	f := Fixer{TimeoutMinutes: 5}
-	got, changed, err := f.Fix(context.Background(), input)
+	f := Timeout{timeoutMinutes: 5}
+	got, changed, err := f.Insert(context.Background(), input)
 	require.NoError(t, err)
 	assert.True(t, changed)
 	// All jobs should get timeout-minutes
@@ -391,8 +391,8 @@ jobs:
     steps:
       - run: npm test`
 
-	f := Fixer{TimeoutMinutes: 5}
-	got, changed, err := f.Fix(context.Background(), input)
+	f := Timeout{timeoutMinutes: 5}
+	got, changed, err := f.Insert(context.Background(), input)
 	require.NoError(t, err)
 	assert.True(t, changed)
 	assert.Equal(t, expected, got)
@@ -408,8 +408,8 @@ jobs:
     steps:
       - run: echo hello`
 
-	f := Fixer{TimeoutMinutes: 5}
-	_, changed, err := f.Fix(context.Background(), input)
+	f := Timeout{timeoutMinutes: 5}
+	_, changed, err := f.Insert(context.Background(), input)
 	require.NoError(t, err)
 	assert.False(t, changed)
 }
