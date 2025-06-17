@@ -259,7 +259,7 @@ func TestFixer_Fix_FlowStyle(t *testing.T) {
 
 	f := Fixer{TimeoutMinutes: 5}
 	got, changed, err := f.Fix(context.Background(), input)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.True(t, errors.Is(err, ErrFlowStyleNotSupported))
 	assert.False(t, changed)
 	assert.Equal(t, input, got)

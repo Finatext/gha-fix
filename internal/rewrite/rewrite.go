@@ -126,7 +126,7 @@ func writeFileAtomic(targetPath, content string) error {
 
 	// Ensure temp file is removed if anything goes wrong
 	defer func() {
-		tmpFile.Close()
+		_ = tmpFile.Close()
 		_ = os.Remove(tmpPath)
 	}()
 

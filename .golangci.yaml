@@ -1,0 +1,64 @@
+version: "2"
+linters:
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - contextcheck
+    - durationcheck
+    - errchkjson
+    - errorlint
+    - exhaustive
+    - gocheckcompilerdirectives
+    - gochecksumtype
+    - gosec
+    - gosmopolitan
+    - loggercheck
+    - makezero
+    - musttag
+    - nilerr
+    - nilnesserr
+    - noctx
+    - protogetter
+    - reassign
+    - recvcheck
+    - rowserrcheck
+    - spancheck
+    - sqlclosecheck
+    - testifylint
+    - wrapcheck
+    - zerologlint
+  settings:
+    testpackage:
+      allow-packages:
+        - main
+        - domain
+    varnamelen:
+      ignore-map-index-ok: true
+    wrapcheck:
+      ignore-sigs:
+        - .String(
+        - .JSON(
+      ignore-package-globs:
+        - github.com/cockroachdb/errors*
+        - github.com/stretchr/testify*
+        - github.com/Finatext/gha-fix*
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
