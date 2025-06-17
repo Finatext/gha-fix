@@ -92,3 +92,7 @@ In addition to this inspiration, `gha-fix` was developed to support new features
 - Updating actions even when a branch name is specified, rather than failing.
 - Exposing a Go interface that's easy to call from within our own tools.
 - Scanning all directories by default — not just `.github` — to support reusable workflows placed elsewhere.
+
+## Development
+### Release
+Create a Git tag and push it. The CI/CD pipeline will take care of the release process.
