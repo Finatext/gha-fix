@@ -8,34 +8,37 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/errors"
-
-	"github.com/Finatext/gha-fix/pkg/result"
 )
+
+type RewriteResult struct {
+	Changed   bool
+	FileCount int
+}
 
 type FixFunc func(ctx context.Context, content string) (string, bool, error)
 
-func Rewrite(ctx context.Context, filePaths []string, ignoreDirs []string, f FixFunc) (result.RewriteResult, error) {
+func Rewrite(ctx context.Context, filePaths []string, ignoreDirs []string, f FixFunc) (RewriteResult, error) {
 	if len(filePaths) == 0 {
 		slog.Debug("searching for workflow files to process")
 		workflowPaths, err := findWorkflowFiles(".", ignoreDirs)
 		if err != nil {
-			return result.RewriteResult{}, err
+			return RewriteResult{}, err
 		}
 		slog.Debug("found workflow files", "count", len(workflowPaths))
 		if len(workflowPaths) == 0 {
-			return result.RewriteResult{}, nil
+			return RewriteResult{}, nil
 		}
 
 		filePaths = workflowPaths
 	}
 
-	res := result.RewriteResult{}
+	res := RewriteResult{}
 
 	for _, filePath := range filePaths {
 		slog.Debug("processing file", "path", filePath)
 		changed, err := processFile(ctx, filePath, f)
 		if err != nil {
-			return result.RewriteResult{}, errors.Wrapf(err, "failed to process file: %s", filePath)
+			return RewriteResult{}, errors.Wrapf(err, "failed to process file: %s", filePath)
 		}
 
 		if changed {

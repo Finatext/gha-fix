@@ -5,15 +5,23 @@ import (
 	"os"
 	"testing"
 
+	"github.com/Finatext/gha-fix/internal/pin"
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+// Short-cuts for internal types
+type ResolvedVersion = pin.ResolvedVersion
+type ActionDef = pin.ActionDef
+
 func TestReplace(t *testing.T) {
-	inputBytes, err := os.ReadFile("../../testdata/pin.yml")
+	inputBytes, err := os.ReadFile("../testdata/pin.yml")
 	require.NoError(t, err)
 	input := string(inputBytes)
+	expectedBytes, err := os.ReadFile("../testdata/pin-after.yml")
+	require.NoError(t, err)
+	expected := string(expectedBytes)
 
 	// Define mock resolver results
 	resolveResults := map[string]ResolvedVersion{
@@ -42,17 +50,13 @@ func TestReplace(t *testing.T) {
 	mock := &mockResolver{
 		resolveResult: resolveResults,
 	}
-	r := &Replacer{
-		Resolver:     mock,
-		IgnoreOwners: []string{"Finatext"},
+	r := &Pin{
+		resolver:     mock,
+		ignoreOwners: []string{"Finatext"},
 	}
-	got, changed, err := r.Replace(context.Background(), input)
+	got, changed, err := r.Apply(context.Background(), input)
 	require.NoError(t, err)
 	assert.True(t, changed)
-
-	expectedBytes, err := os.ReadFile("../../testdata/pin-after.yml")
-	require.NoError(t, err)
-	expected := string(expectedBytes)
 	assert.Equal(t, expected, got)
 }
 
@@ -94,9 +98,9 @@ func TestIgnoreOwner(t *testing.T) {
 			mock := &mockResolver{
 				resolveResult: tt.resolveResults,
 			}
-			r := &Replacer{
-				Resolver:     mock,
-				IgnoreOwners: tt.ignoreOwners,
+			r := &Pin{
+				resolver:     mock,
+				ignoreOwners: tt.ignoreOwners,
 			}
 
 			got, changed, err := r.replaceLine(context.Background(), tt.input)
@@ -157,9 +161,9 @@ func TestIgnoreRepo(t *testing.T) {
 			mock := &mockResolver{
 				resolveResult: tt.resolveResults,
 			}
-			r := &Replacer{
-				Resolver:    mock,
-				IgnoreRepos: tt.ignoreRepos,
+			r := &Pin{
+				resolver:    mock,
+				ignoreRepos: tt.ignoreRepos,
 			}
 
 			got, changed, err := r.replaceLine(context.Background(), tt.input)
@@ -224,10 +228,10 @@ func TestCombinedIgnores(t *testing.T) {
 			mock := &mockResolver{
 				resolveResult: tt.resolveResults,
 			}
-			r := &Replacer{
-				Resolver:     mock,
-				IgnoreOwners: tt.ignoreOwners,
-				IgnoreRepos:  tt.ignoreRepos,
+			r := &Pin{
+				resolver:     mock,
+				ignoreOwners: tt.ignoreOwners,
+				ignoreRepos:  tt.ignoreRepos,
 			}
 
 			got, changed, err := r.replaceLine(context.Background(), tt.input)
@@ -528,9 +532,9 @@ func TestReplaceLine(t *testing.T) {
 			mock := &mockResolver{
 				resolveResult: tt.resolveResults,
 			}
-			r := &Replacer{
-				Resolver:     mock,
-				IgnoreOwners: []string{},
+			r := &Pin{
+				resolver:     mock,
+				ignoreOwners: []string{},
 			}
 
 			got, changed, err := r.replaceLine(context.Background(), tt.input)
@@ -551,7 +555,7 @@ type mockResolver struct {
 
 func (m *mockResolver) ResolveVersion(ctx context.Context, def ActionDef) (ResolvedVersion, error) {
 	if def.HasCommitSHA() {
-		return ResolvedVersion{}, AlreadyResolvedError
+		return ResolvedVersion{}, pin.AlreadyResolvedError
 	}
 
 	// For subdirectories, we need to look up the base repo
@@ -572,7 +576,7 @@ func (m *mockResolver) ResolveVersion(ctx context.Context, def ActionDef) (Resol
 	if result, ok := m.resolveResult[key]; ok {
 		// Special case to trigger AlreadyResolvedError for testing
 		if result.CommitSHA == "AlreadyResolvedError" {
-			return ResolvedVersion{}, AlreadyResolvedError
+			return ResolvedVersion{}, pin.AlreadyResolvedError
 		}
 		return result, nil
 	}

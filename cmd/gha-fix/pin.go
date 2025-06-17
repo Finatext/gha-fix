@@ -1,11 +1,11 @@
-package cmd
+package main
 
 import (
 	"context"
 	"log/slog"
 	"os"
 
-	"github.com/Finatext/gha-fix/pkg/pin"
+	ghafix "github.com/Finatext/gha-fix"
 	"github.com/google/go-github/v72/github"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -50,13 +50,13 @@ Note: GITHUB_TOKEN environment variable is required to fetch tags and commit SHA
 		ignoreRepos := viper.GetStringSlice("pin.ignore-repos")
 		ignoreDirs := viper.GetStringSlice("ignore-dirs") // Use common ignore-dirs configuration
 
-		pinner := pin.NewPinner(githubClient, pin.Options{
+		pinCmd := ghafix.NewPinCommand(githubClient, ghafix.PinOptions{
 			IgnoreOwners: ignoreOwners,
 			IgnoreRepos:  ignoreRepos,
 			IgnoreDirs:   ignoreDirs,
 		})
 
-		result, err := pinner.Pin(ctx, args)
+		result, err := pinCmd.Run(ctx, args)
 		if err != nil {
 			slog.Error("failed to pin actions", "error", err)
 			os.Exit(1)

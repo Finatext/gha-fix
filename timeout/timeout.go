@@ -19,87 +19,93 @@ var (
 	ErrCompactJobSyntaxNotSupported = errors.New("compact job syntax (job_name: { ... }) is not supported, please use regular YAML syntax")
 )
 
-type Fixer struct {
-	TimeoutMinutes uint64
+type Timeout struct {
+	timeoutMinutes uint64
+}
+
+func NewTimeout(timeoutMinutes uint64) Timeout {
+	return Timeout{
+		timeoutMinutes: timeoutMinutes,
+	}
 }
 
 type position struct {
-	Line   int
-	Column int
+	line   int
+	column int
 }
 
-// Fix adds timeout-minutes to jobs that don't have it
+// Insert adds timeout-minutes to jobs that don't have it
 // Jobs that use reusable workflows (have "uses" field) are skipped
-func (f Fixer) Fix(ctx context.Context, content string) (string, bool, error) {
+func (f Timeout) Insert(ctx context.Context, input string) (string, bool, error) {
 	// Try to determine if this is a valid GitHub Actions workflow file
-	if !strings.Contains(content, "jobs:") || !strings.Contains(content, "runs-on:") {
-		return content, false, nil
+	if !strings.Contains(input, "jobs:") || !strings.Contains(input, "runs-on:") {
+		return input, false, nil
 	}
 
 	// Check for flow style YAML in jobs like "job_name: { ... }"
-	contentLines := strings.SplitSeq(content, "\n")
+	contentLines := strings.SplitSeq(input, "\n")
 	for line := range contentLines {
 		if strings.Contains(line, ": {") &&
 			(strings.Contains(line, "runs-on:") ||
 				strings.Contains(line, "steps:") ||
 				strings.Contains(line, "uses:")) {
-			return content, false, ErrFlowStyleNotSupported
+			return input, false, ErrFlowStyleNotSupported
 		}
 
 		// Check for compact job syntax
 		if strings.Contains(line, ":runs-on:") {
-			return content, false, ErrCompactJobSyntaxNotSupported
+			return input, false, ErrCompactJobSyntaxNotSupported
 		}
 	}
 
-	file, err := parser.ParseBytes([]byte(content), parser.ParseComments)
+	file, err := parser.ParseBytes([]byte(input), parser.ParseComments)
 	if err != nil {
-		return content, false, errors.WithStack(err)
+		return input, false, errors.WithStack(err)
 	}
 
 	// Verify that this is actually a GitHub workflow file
 	if !isGitHubWorkflow(file) {
-		return content, false, nil
+		return input, false, nil
 	}
 
 	positions := getPositions(file)
 	if len(positions) == 0 {
-		return content, false, nil
+		return input, false, nil
 	}
 
 	// Insert timeout-minutes at each position
-	lines := strings.Split(content, "\n")
+	lines := strings.Split(input, "\n")
 	modified := false
 
 	// Process positions in reverse order to avoid offset issues
 	for i := len(positions) - 1; i >= 0; i-- {
 		pos := positions[i]
 
-		if pos.Line <= 0 || pos.Line > len(lines) {
+		if pos.line <= 0 || pos.line > len(lines) {
 			continue
 		}
 
 		// Calculate indentation for the timeout-minutes line
 		// It should be at the same level as other job properties
-		indent, err := getJobPropertyIndent(lines, pos.Line)
+		indent, err := getJobPropertyIndent(lines, pos.line)
 		if err != nil {
-			return content, false, errors.Wrapf(err, "failed to calculate indent for line %d", pos.Line+1)
+			return input, false, errors.Wrapf(err, "failed to calculate indent for line %d", pos.line+1)
 		}
 
 		// Create the timeout-minutes line
-		timeoutLine := fmt.Sprintf("%stimeout-minutes: %d", indent, f.TimeoutMinutes)
+		timeoutLine := fmt.Sprintf("%stimeout-minutes: %d", indent, f.timeoutMinutes)
 
 		// Insert after the job key line
 		newLines := make([]string, 0, len(lines)+1)
-		newLines = append(newLines, lines[:pos.Line]...)
+		newLines = append(newLines, lines[:pos.line]...)
 		newLines = append(newLines, timeoutLine)
-		newLines = append(newLines, lines[pos.Line:]...)
+		newLines = append(newLines, lines[pos.line:]...)
 		lines = newLines
 		modified = true
 	}
 
 	if !modified {
-		return content, false, nil
+		return input, false, nil
 	}
 
 	return strings.Join(lines, "\n"), true, nil
@@ -182,8 +188,8 @@ func getPositions(file *ast.File) []position {
 					// This matches the test expectations
 					if hasRunsOn && !hasTimeout && !hasUses {
 						positions = append(positions, position{
-							Line:   token.Position.Line,
-							Column: token.Position.Column,
+							line:   token.Position.Line,
+							column: token.Position.Column,
 						})
 					}
 					continue
@@ -218,8 +224,8 @@ func getPositions(file *ast.File) []position {
 					// Find the position after the job key line
 					if token != nil && token.Position != nil {
 						positions = append(positions, position{
-							Line:   token.Position.Line,
-							Column: token.Position.Column,
+							line:   token.Position.Line,
+							column: token.Position.Column,
 						})
 					}
 				}
