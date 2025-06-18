@@ -1,5 +1,7 @@
 # gha-fix
 
+test
+
 gha-fix automates security and maintenance fixes in GitHub Actions workflows. It provides commands to address common issues in workflow files.
 
 ## Features
