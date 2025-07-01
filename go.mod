@@ -3,7 +3,7 @@ module github.com/Finatext/gha-fix
 go 1.24.1
 
 require (
-	github.com/Masterminds/semver/v3 v3.3.1
+	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/cockroachdb/errors v1.12.0
 	github.com/goccy/go-yaml v1.18.0
 	github.com/google/go-github/v72 v72.0.0
