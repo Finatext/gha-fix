@@ -32,12 +32,6 @@ If no files are specified, all workflow files (.yml or .yaml) in the current dir
 #### GitHub Token Configuration
 `GITHUB_TOKEN` is required to fetch tags and commit SHAs from GitHub. Can be provided via environment variable or other ways.
 
-GitHub's `gh` comamnd can setup token with `gh auth login` then:
-
-```bash
-env GITHUB_TOKEN=`gh auth token` gha-fix pin
-```
-
 #### Example
 
 ```bash
