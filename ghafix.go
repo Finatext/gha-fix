@@ -18,6 +18,8 @@ type PinOptions struct {
 	IgnoreOwners []string
 	IgnoreRepos  []string
 	IgnoreDirs   []string
+	// Strict SHA pinning for new GitHub's SHA pinning enforcement policy. See README for details.
+	StrictPinning202508 bool
 }
 
 // PinCommand is a command to pin GitHub Actions in workflow files to specific commit SHAs.
@@ -29,7 +31,7 @@ type PinCommand struct {
 // NewPinCommand creates a new PinCommand with the provided GitHub client and options.
 func NewPinCommand(client *gogithub.Client, opts PinOptions) PinCommand {
 	return PinCommand{
-		pin:     pin.NewPin(client, opts.IgnoreOwners, opts.IgnoreRepos),
+		pin:     pin.NewPin(client, opts.IgnoreOwners, opts.IgnoreRepos, opts.StrictPinning202508),
 		options: opts,
 	}
 }

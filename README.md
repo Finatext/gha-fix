@@ -32,6 +32,17 @@ If no files are specified, all workflow files (.yml or .yaml) in the current dir
 #### GitHub Token Configuration
 `GITHUB_TOKEN` is required to fetch tags and commit SHAs from GitHub. Can be provided via environment variable or other ways.
 
+#### Strict SHA Pinning (--strict-pinning-202508)
+
+The `--strict-pinning-202508` option implements support for GitHub's SHA pinning enforcement policy announced in August 2025. When enabled, this option modifies the behavior of ignore-owners:
+
+- **Actions, composite actions** (e.g., `my-org/repo@v1`, `my-org/repo/path/to/action@v4`) will be pinned to SHAs even if their owner is specified in `--ignore-owners` to follow SHA pinning enforcement policy
+- **Reusable workflows** (e.g., `org/repo/.github/workflows/build.yml@main`) will still respect the `--ignore-owners` setting
+
+This differentiation allows organizations to comply with GitHub's security policies for composite actions while maintaining flexibility for reusable workflows. The tool distinguishes between composite actions and reusable workflows based on whether the action path contains a file extension.
+
+Reference: [GitHub Actions policy now supports blocking and SHA pinning actions](https://github.blog/changelog/2025-08-15-github-actions-policy-now-supports-blocking-and-sha-pinning-actions/)
+
 #### Example
 
 ```bash
@@ -43,6 +54,9 @@ gha-fix pin
 
 # Ignore specific owners
 gha-fix pin --ignore-owners=actions,github
+
+# Enable strict SHA pinning for composite actions (GitHub's SHA pinning enforcement policy)
+gha-fix pin --strict-pinning-202508
 
 # Ignore specific directories when searching for workflow files (global option)
 # This will skip any directory with these names, including in subdirectories (e.g., abc/def/node_modules/)

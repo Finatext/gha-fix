@@ -583,3 +583,117 @@ func (m *mockResolver) ResolveVersion(ctx context.Context, def ActionDef) (Resol
 
 	return ResolvedVersion{}, errors.Newf("no mock result for %s", key)
 }
+
+func TestStrictPinning202508(t *testing.T) {
+	tests := []struct {
+		name                string
+		input               string
+		expected            string
+		changed             bool
+		wantErr             bool
+		ignoreOwners        []string
+		strictPinning202508 bool
+		resolveResults      map[string]ResolvedVersion
+	}{
+		{
+			name:                "Composite action - ignore owners disabled with strict pinning",
+			input:               "- uses: actions/checkout@v4",
+			expected:            "- uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2",
+			changed:             true,
+			ignoreOwners:        []string{"actions"},
+			strictPinning202508: true,
+			resolveResults: map[string]ResolvedVersion{
+				"actions/checkout@v4": {
+					CommitSHA:  "11bd71901bbe5b1630ceea73d27597364c9af683",
+					RefComment: "v4.2.2",
+				},
+			},
+		},
+		{
+			name:                "Reusable workflow - ignore owners respected with strict pinning",
+			input:               "- uses: org/repo/.github/workflows/build.yml@main",
+			expected:            "- uses: org/repo/.github/workflows/build.yml@main",
+			changed:             false,
+			ignoreOwners:        []string{"org"},
+			strictPinning202508: true,
+			resolveResults:      map[string]ResolvedVersion{},
+		},
+		{
+			name:                "Composite action - normal ignore owners without strict pinning",
+			input:               "- uses: actions/checkout@v4",
+			expected:            "- uses: actions/checkout@v4",
+			changed:             false,
+			ignoreOwners:        []string{"actions"},
+			strictPinning202508: false,
+			resolveResults:      map[string]ResolvedVersion{},
+		},
+		{
+			name:                "Composite action with path - strict pinning overrides ignore owners",
+			input:               "- uses: myorg/myrepo/subaction@v1",
+			expected:            "- uses: myorg/myrepo/subaction@abcdef1234567890abcdef1234567890abcdef12 # v1.0.0",
+			changed:             true,
+			ignoreOwners:        []string{"myorg"},
+			strictPinning202508: true,
+			resolveResults: map[string]ResolvedVersion{
+				"myorg/myrepo@v1": {
+					CommitSHA:  "abcdef1234567890abcdef1234567890abcdef12",
+					RefComment: "v1.0.0",
+				},
+			},
+		},
+		{
+			name:                "Reusable workflow with yaml extension - ignore owners respected",
+			input:               "- uses: myorg/workflows/.github/workflows/ci.yaml@main",
+			expected:            "- uses: myorg/workflows/.github/workflows/ci.yaml@main",
+			changed:             false,
+			ignoreOwners:        []string{"myorg"},
+			strictPinning202508: true,
+			resolveResults:      map[string]ResolvedVersion{},
+		},
+		{
+			name:                "Non-ignored owner with strict pinning - should process normally",
+			input:               "- uses: other/repo@v2",
+			expected:            "- uses: other/repo@fedcba0987654321fedcba0987654321fedcba09 # v2.1.0",
+			changed:             true,
+			ignoreOwners:        []string{"actions"},
+			strictPinning202508: true,
+			resolveResults: map[string]ResolvedVersion{
+				"other/repo@v2": {
+					CommitSHA:  "fedcba0987654321fedcba0987654321fedcba09",
+					RefComment: "v2.1.0",
+				},
+			},
+		},
+		{
+			name:                "Reusable workflow without strict pinning - normal ignore behavior",
+			input:               "- uses: org/repo/.github/workflows/deploy.yml@v1",
+			expected:            "- uses: org/repo/.github/workflows/deploy.yml@v1",
+			changed:             false,
+			ignoreOwners:        []string{"org"},
+			strictPinning202508: false,
+			resolveResults:      map[string]ResolvedVersion{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mock := &mockResolver{
+				resolveResult: tt.resolveResults,
+			}
+			r := &Pin{
+				resolver:            mock,
+				ignoreOwners:        tt.ignoreOwners,
+				strictPinning202508: tt.strictPinning202508,
+			}
+
+			got, changed, err := r.replaceLine(context.Background(), tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, got)
+			assert.Equal(t, tt.changed, changed)
+		})
+	}
+}

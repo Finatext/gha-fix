@@ -306,6 +306,84 @@ func TestFindLatestTag(t *testing.T) {
 	}
 }
 
+func TestActionDef_IsReusableWorkflow(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		expected bool
+	}{
+		{
+			name:     "Composite action - no path",
+			path:     "",
+			expected: false,
+		},
+		{
+			name:     "Composite action - simple path",
+			path:     "diff",
+			expected: false,
+		},
+		{
+			name:     "Composite action - deep path",
+			path:     "tools/diff",
+			expected: false,
+		},
+		{
+			name:     "Composite action - path with subdirectories",
+			path:     "path/to/action",
+			expected: false,
+		},
+		{
+			name:     "Reusable workflow - yml extension",
+			path:     ".github/workflows/build.yml",
+			expected: true,
+		},
+		{
+			name:     "Reusable workflow - yaml extension",
+			path:     ".github/workflows/test.yaml",
+			expected: true,
+		},
+		{
+			name:     "Reusable workflow - other extension",
+			path:     "scripts/deploy.sh",
+			expected: true,
+		},
+		{
+			name:     "Reusable workflow - deep path with extension",
+			path:     "path/to/workflow.yml",
+			expected: true,
+		},
+		{
+			name:     "Reusable workflow - multiple extensions",
+			path:     "file.tar.gz",
+			expected: true,
+		},
+		{
+			name:     "Reusable workflow - extension in directory name",
+			path:     "dir.ext/workflow.yml",
+			expected: true,
+		},
+		{
+			name:     "Composite action - extension only in directory name",
+			path:     "dir.ext/action",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actionDef := ActionDef{
+				Owner:    "test",
+				Repo:     "repo",
+				Path:     tt.path,
+				RefOrSHA: "v1.0.0",
+			}
+
+			result := actionDef.IsReusableWorkflow()
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 // Helper function to create a tag
 func createTag(name, sha string) *gogithub.RepositoryTag {
 	return &gogithub.RepositoryTag{

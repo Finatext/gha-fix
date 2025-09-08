@@ -28,6 +28,15 @@ and subdirectories will be processed.
 You can customize the behavior with the following options:
   --ignore-owners: Skip actions from specific owners (e.g., "actions,github")
   --ignore-repos: Skip specific repositories (e.g., "actions/checkout,docker/login-action")
+  --strict-pinning-202508: Enable strict SHA pinning for composite actions (GitHub's SHA pinning enforcement policy)
+
+The --strict-pinning-202508 option implements support for GitHub's SHA pinning enforcement policy
+announced in August 2025. When enabled:
+  - Composite actions (e.g., actions/checkout@v4) will be pinned to SHAs even if owner is in ignore-owners
+  - Reusable workflows (e.g., org/repo/.github/workflows/build.yml@main) still respect ignore-owners
+
+This helps organizations comply with GitHub's security policies while maintaining flexibility
+for reusable workflows. See: https://github.blog/changelog/2025-08-15-github-actions-policy-now-supports-blocking-and-sha-pinning-actions/
 
 Global options:
   --ignore-dirs: Skip specific directories when searching for workflow files (e.g., "node_modules,dist")
@@ -49,11 +58,13 @@ Note: GITHUB_TOKEN environment variable is required to fetch tags and commit SHA
 		ignoreOwners := viper.GetStringSlice("pin.ignore-owners")
 		ignoreRepos := viper.GetStringSlice("pin.ignore-repos")
 		ignoreDirs := viper.GetStringSlice("ignore-dirs") // Use common ignore-dirs configuration
+		strictPinning202508 := viper.GetBool("pin.strict-pinning-202508")
 
 		pinCmd := ghafix.NewPinCommand(githubClient, ghafix.PinOptions{
-			IgnoreOwners: ignoreOwners,
-			IgnoreRepos:  ignoreRepos,
-			IgnoreDirs:   ignoreDirs,
+			IgnoreOwners:        ignoreOwners,
+			IgnoreRepos:         ignoreRepos,
+			IgnoreDirs:          ignoreDirs,
+			StrictPinning202508: strictPinning202508,
 		})
 
 		result, err := pinCmd.Run(ctx, args)
@@ -86,7 +97,9 @@ func init() {
 
 	pinCmd.Flags().StringSlice("ignore-owners", []string{}, "Comma-separated list of owners to ignore")
 	pinCmd.Flags().StringSlice("ignore-repos", []string{}, "Comma-separated list of repos to ignore in format owner/repo")
+	pinCmd.Flags().Bool("strict-pinning-202508", false, "Enable strict SHA pinning for composite actions (GitHub's SHA pinning enforcement policy)")
 
 	cobra.CheckErr(viper.BindPFlag("pin.ignore-owners", pinCmd.Flags().Lookup("ignore-owners")))
 	cobra.CheckErr(viper.BindPFlag("pin.ignore-repos", pinCmd.Flags().Lookup("ignore-repos")))
+	cobra.CheckErr(viper.BindPFlag("pin.strict-pinning-202508", pinCmd.Flags().Lookup("strict-pinning-202508")))
 }

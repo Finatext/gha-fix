@@ -31,6 +31,21 @@ func (a ActionDef) HasCommitSHA() bool {
 	return true
 }
 
+// IsReusableWorkflow determines if this action is a reusable workflow.
+// Reusable workflows have file extensions in their path (e.g., .yml, .yaml).
+// Composite actions do not have extensions in their path.
+// This is for GitHub's SHA pinning enforcement policy (strict-pinning-202508).
+func (a ActionDef) IsReusableWorkflow() bool {
+	if a.Path == "" {
+		return false
+	}
+
+	// Check if the path has any file extension
+	parts := strings.Split(a.Path, "/")
+	lastPart := parts[len(parts)-1]
+	return strings.Contains(lastPart, ".")
+}
+
 // Extract version representation from ref.
 // Version like string = 2.3.4, v2.3.4, v2.3.4-beta, v2.3.4+build, 2.3.4-beta, 2.3.4+build
 //
