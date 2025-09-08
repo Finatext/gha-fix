@@ -17,17 +17,19 @@ type resolver interface {
 }
 
 type Pin struct {
-	resolver     resolver
-	ignoreOwners []string
-	ignoreRepos  []string
+	resolver            resolver
+	ignoreOwners        []string
+	ignoreRepos         []string
+	strictPinning202508 bool
 }
 
-func NewPin(client *gogithub.Client, ignoreOwners, ignoreRepos []string) Pin {
+func NewPin(client *gogithub.Client, ignoreOwners, ignoreRepos []string, strictPinning202508 bool) Pin {
 	resolver := pin.NewVersionResolver(client.Repositories)
 	return Pin{
-		resolver:     &resolver,
-		ignoreOwners: ignoreOwners,
-		ignoreRepos:  ignoreRepos,
+		resolver:            &resolver,
+		ignoreOwners:        ignoreOwners,
+		ignoreRepos:         ignoreRepos,
+		strictPinning202508: strictPinning202508,
 	}
 }
 
@@ -64,9 +66,13 @@ func (p *Pin) replaceLine(ctx context.Context, line string) (string, bool, error
 	}
 	def := parsed.def
 
-	if slices.Contains(p.ignoreOwners, def.Owner) {
-		return line, false, nil
+	// Apply ignore owners check (skip for composite actions when strict pinning is enabled)
+	if !p.strictPinning202508 || def.IsReusableWorkflow() {
+		if slices.Contains(p.ignoreOwners, def.Owner) {
+			return line, false, nil
+		}
 	}
+
 	repoKey := def.Owner + "/" + def.Repo
 	if slices.Contains(p.ignoreRepos, repoKey) {
 		return line, false, nil
