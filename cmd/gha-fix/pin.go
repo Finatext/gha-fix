@@ -6,7 +6,7 @@ import (
 	"os"
 
 	ghafix "github.com/Finatext/gha-fix"
-	"github.com/google/go-github/v72/github"
+	"github.com/Finatext/gha-fix/internal/githubclient"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -29,6 +29,7 @@ You can customize the behavior with the following options:
   --ignore-owners: Skip actions from specific owners (e.g., "actions,github")
   --ignore-repos: Skip specific repositories (e.g., "actions/checkout,docker/login-action")
   --strict-pinning-202508: Enable strict SHA pinning for composite actions (GitHub's SHA pinning enforcement policy)
+  --api-server: Full GitHub API base URL (e.g., https://github.enterprise.company.com/api/v3/)
 
 The --strict-pinning-202508 option implements support for GitHub's SHA pinning enforcement policy
 announced in August 2025. When enabled:
@@ -52,7 +53,20 @@ Note: GITHUB_TOKEN environment variable is required to fetch tags and commit SHA
 			os.Exit(1)
 		}
 
-		githubClient := github.NewClient(nil).WithAuthToken(githubToken)
+		// API server resolution priority:
+		// 1) pin.api-server (flag/config)
+		// 2) GITHUB_API_URL env var
+		// 3) default https://api.github.com/
+		apiServer := viper.GetString("pin.api-server")
+		if apiServer == "" {
+			apiServer = os.Getenv("GITHUB_API_URL")
+		}
+
+		githubClient, err := githubclient.NewClient(githubToken, apiServer)
+		if err != nil {
+			slog.Error("failed to create GitHub client", "error", err)
+			os.Exit(1)
+		}
 
 		// Get values from viper which can come from flags, config file, or environment variables
 		ignoreOwners := viper.GetStringSlice("pin.ignore-owners")
@@ -99,7 +113,12 @@ func init() {
 	pinCmd.Flags().StringSlice("ignore-repos", []string{}, "Comma-separated list of repos to ignore in format owner/repo")
 	pinCmd.Flags().Bool("strict-pinning-202508", false, "Enable strict SHA pinning for composite actions (GitHub's SHA pinning enforcement policy)")
 
+	// Full GitHub API base URL (GHES support)
+	pinCmd.Flags().String("api-server", "", "Full GitHub API base URL (e.g., https://github.enterprise.company.com/api/v3/)")
+	cobra.CheckErr(viper.BindPFlag("pin.api-server", pinCmd.Flags().Lookup("api-server")))
+
 	cobra.CheckErr(viper.BindPFlag("pin.ignore-owners", pinCmd.Flags().Lookup("ignore-owners")))
 	cobra.CheckErr(viper.BindPFlag("pin.ignore-repos", pinCmd.Flags().Lookup("ignore-repos")))
 	cobra.CheckErr(viper.BindPFlag("pin.strict-pinning-202508", pinCmd.Flags().Lookup("strict-pinning-202508")))
 }
+
