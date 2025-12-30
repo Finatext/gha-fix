@@ -7,17 +7,17 @@ gha-fix automates security and maintenance fixes in GitHub Actions workflows. It
 - **Pin GitHub Actions**: Converts version references to specific commit SHAs for improved security
 - **Add Timeouts**: Adds `timeout-minutes` to GitHub Actions jobs to prevent workflows from running for too long
 
-## Installation
+# Installation
 
-### Using Go
+## Using Go
 
 ```bash
 go install github.com/Finatext/gha-fix@latest
 ```
 
-## Usage
+# Usage
 
-### pin
+## pin
 
 Pin GitHub Actions used in workflow files (.yml or .yaml) to specific commit SHAs.
 
@@ -29,8 +29,86 @@ gha-fix pin [file1 file2 ...] [flags]
 
 If no files are specified, all workflow files (.yml or .yaml) in the current directory and subdirectories will be processed.
 
-#### GitHub Token Configuration
-`GITHUB_TOKEN` is required to fetch tags and commit SHAs from GitHub. Can be provided via environment variable or other ways.
+# Settings
+
+* You can specify and use only the official Github Environment variables, already present during CICD, or specify a configuration file for the command execution.
+
+## Configuration file (gha-fix.yaml)
+
+`gha-fix` can be configured via a YAML file named `gha-fix.yaml` in the current directory, or by passing `--config /path/to/gha-fix.yaml`.
+
+Configuration sources follow typical precedence rules:
+
+- CLI flags (highest)
+- Config file
+- Environment variables (for selected settings, e.g. `GITHUB_TOKEN` and `GITHUB_API_URL`)
+- Defaults (lowest)
+
+### For the Top-level (global)
+
+- `log-level` (string): logging verbosity. Valid values: `debug`, `info`, `warn`, `error`.
+- `ignore-dirs` (string list): directory names to skip when searching for workflow files.
+
+### `pin:` section
+
+- `pin.github-token` (string): GitHub token used for API calls to resolve tags and branch heads.
+  - Env alternative: `GITHUB_TOKEN` (bound to `pin.github-token`).
+- `pin.api-server` (string): **full GitHub API base URL** (e.g., `https://github.enterprise.company.com/api/v3/`).
+  - If not set, `gha-fix` uses `GITHUB_API_URL`.
+  - If neither is set, defaults to `https://api.github.com/`.
+- `pin.ignore-owners` (string list): owners to skip pinning (e.g., `actions`, `github`).
+- `pin.ignore-repos` (string list): repositories to skip pinning, format `owner/repo`.
+- `pin.strict-pinning-202508` (bool): enables strict SHA pinning behavior for composite actions (see “Strict SHA Pinning” section).
+
+* `timeout:` section:
+- `timeout.timeout-value` (int): value (minutes) inserted by `gha-fix timeout` for jobs missing `timeout-minutes`.
+
+
+## Example `gha-fix.yaml`
+
+```yaml
+# Global settings
+log-level: info
+ignore-dirs:
+  - .git
+  - node_modules
+  - dist
+  - out
+  - vendor
+
+pin:
+  # Full GitHub API base URL (useful for GitHub Enterprise Server).
+  # If omitted, gha-fix falls back to GITHUB_API_URL, then https://api.github.com/.
+  api-server: "https://github.enterprise.company.com/api/v3/"
+
+  # GitHub token used to call the GitHub API for resolving tags/branches to commit SHAs.
+  # You can also set this via the GITHUB_TOKEN env var (recommended for CI).
+  github-token: "${GITHUB_TOKEN}"
+
+  # Owners to ignore during pinning (unless strict-pinning-202508 is enabled for composite actions).
+  ignore-owners:
+    - actions
+    - github
+
+  # Repositories to ignore during pinning, format: owner/repo
+  ignore-repos:
+    - actions/checkout
+    - docker/login-action
+
+  # Enable strict SHA pinning enforcement behavior for composite actions (see below).
+  strict-pinning-202508: false
+
+timeout:
+  # Default timeout-minutes value inserted by `gha-fix timeout`
+  timeout-value: 5
+```
+
+### Using a non-default config path
+
+```bash
+gha-fix --config /path/to/gha-fix.yaml pin
+gha-fix --config /path/to/gha-fix.yaml timeout
+```
 
 #### GitHub API Server (GHES support)
 
@@ -60,7 +138,11 @@ pin:
 
 Note: `api-server` must be the **full API base URL** for your deployment. `gha-fix` will not assume `/api/v3`.
 
-#### Strict SHA Pinning (--strict-pinning-202508)
+# Features
+
+Here are the features supported:
+
+## Strict SHA Pinning (--strict-pinning-202508)
 
 The `--strict-pinning-202508` option implements support for GitHub's SHA pinning enforcement policy announced in August 2025. When enabled, this option modifies the behavior of ignore-owners:
 
@@ -71,7 +153,7 @@ This differentiation allows organizations to comply with GitHub's security polic
 
 Reference: [GitHub Actions policy now supports blocking and SHA pinning actions](https://github.blog/changelog/2025-08-15-github-actions-policy-now-supports-blocking-and-sha-pinning-actions/)
 
-#### Example
+### Example
 
 ```bash
 # Process a specific workflow file
@@ -94,7 +176,7 @@ gha-fix pin --api-server "https://github.enterprise.company.com/api/v3/"
 gha-fix --ignore-dirs=.git,node_modules,dist,out,vendor,.idea,.vscode pin
 ```
 
-### timeout
+## timeout
 
 Add `timeout-minutes` to GitHub Actions workflow jobs that don't have one defined.
 
@@ -106,7 +188,7 @@ gha-fix timeout [file1 file2 ...] [flags]
 
 If no files are specified, all workflow files (.yml or .yaml) in the current directory and subdirectories will be processed.
 
-#### Example
+### Example
 
 ```bash
 # Add default timeout (5 minutes) to all workflow files
@@ -122,7 +204,7 @@ gha-fix timeout -t 15
 gha-fix --ignore-dirs=node_modules,dist timeout -t 15
 ```
 
-## Acknowledgements
+# Acknowledgements
 
 `gha-fix` adopts a text-based processing strategy for GitHub Actions workflow files, an approach inspired by [suzuki-shunsuke/pinact](https://github.com/suzuki-shunsuke/pinact).
 
@@ -133,6 +215,8 @@ In addition to this inspiration, `gha-fix` was developed to support new features
 - Scanning all directories by default — not just `.github` — to support reusable workflows placed elsewhere.
 
 ## Development
+
 ### Release
+
 Create a Git tag and push it. The CI/CD pipeline will take care of the release process.
 
