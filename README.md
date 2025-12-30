@@ -32,6 +32,34 @@ If no files are specified, all workflow files (.yml or .yaml) in the current dir
 #### GitHub Token Configuration
 `GITHUB_TOKEN` is required to fetch tags and commit SHAs from GitHub. Can be provided via environment variable or other ways.
 
+#### GitHub API Server (GHES support)
+
+By default, `gha-fix` uses the GitHub.com API (`https://api.github.com/`). To use GitHub Enterprise Server (GHES) or any other deployment, set the **full API base URL**.
+
+Supported configuration (highest priority first):
+
+1. CLI flag: `gha-fix pin --api-server <FULL_API_BASE_URL>`
+2. Config file key: `pin.api-server`
+3. Environment variable: `GITHUB_API_URL`
+4. Default: `https://api.github.com/`
+
+Example (GHES):
+
+```bash
+export GITHUB_TOKEN=...
+export GITHUB_API_URL="https://github.enterprise.company.com/api/v3/"
+gha-fix pin
+```
+
+Or with config file (`gha-fix.yaml`):
+
+```yaml
+pin:
+  api-server: "https://github.enterprise.company.com/api/v3/"
+```
+
+Note: `api-server` must be the **full API base URL** for your deployment. `gha-fix` will not assume `/api/v3`.
+
 #### Strict SHA Pinning (--strict-pinning-202508)
 
 The `--strict-pinning-202508` option implements support for GitHub's SHA pinning enforcement policy announced in August 2025. When enabled, this option modifies the behavior of ignore-owners:
@@ -57,6 +85,9 @@ gha-fix pin --ignore-owners=actions,github
 
 # Enable strict SHA pinning for composite actions (GitHub's SHA pinning enforcement policy)
 gha-fix pin --strict-pinning-202508
+
+# Use GHES API server explicitly
+gha-fix pin --api-server "https://github.enterprise.company.com/api/v3/"
 
 # Ignore specific directories when searching for workflow files (global option)
 # This will skip any directory with these names, including in subdirectories (e.g., abc/def/node_modules/)
@@ -104,3 +135,4 @@ In addition to this inspiration, `gha-fix` was developed to support new features
 ## Development
 ### Release
 Create a Git tag and push it. The CI/CD pipeline will take care of the release process.
+
