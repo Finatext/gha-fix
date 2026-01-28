@@ -33,6 +33,28 @@ If no files are specified, all workflow files (.yml or .yaml) in the current dir
 
 * You can specify and use only the official Github Environment variables, already present during CICD, or specify a configuration file for the command execution.
 
+## Tokens and GHES support
+
+- **GitHub.com (default API)**  
+  - `GITHUB_TOKEN` (required)
+
+- **GitHub Enterprise Server (GHES) or any non-github.com API base**  
+  - `pin.api-server` (or `GITHUB_API_URL`) must be the full API base URL (e.g., `https://github.enterprise.company.com/api/v3/`).  
+  - `GHES_GITHUB_TOKEN` (required) — used for GHES API requests.  
+  - `GITHUB_TOKEN` (required) — used for GitHub.com fallback when GHES returns 404 on tags.
+
+### Flags
+
+- `--api-server` — Full GitHub API base URL (e.g., `https://github.enterprise.company.com/api/v3/`).
+- `--github-token` — GitHub.com token (also via `GITHUB_TOKEN`).
+- Other existing flags remain unchanged (ignore-owners, ignore-repos, strict-pinning-202508, etc.).
+
+### GHES fallback behavior
+
+When `api-server` is not `https://api.github.com/`, gha-fix:
+1. Uses `GHES_GITHUB_TOKEN` against the GHES API.
+2. If a tag listing returns 404, it retries against `https://api.github.com/` using `GITHUB_TOKEN`.
+
 ## Configuration file (gha-fix.yaml)
 
 `gha-fix` can be configured via a YAML file named `gha-fix.yaml` in the current directory, or by passing `--config /path/to/gha-fix.yaml`.
@@ -51,7 +73,7 @@ Configuration sources follow typical precedence rules:
 
 ### `pin:` section
 
-- `pin.github-token` (string): GitHub token used for API calls to resolve tags and branch heads.
+- `pin.github-token` (string): GitHub token used for GitHub.com API calls (default or fallback).
   - Env alternative: `GITHUB_TOKEN` (bound to `pin.github-token`).
 - `pin.api-server` (string): **full GitHub API base URL** (e.g., `https://github.enterprise.company.com/api/v3/`).
   - If not set, `gha-fix` uses `GITHUB_API_URL`.
@@ -62,7 +84,6 @@ Configuration sources follow typical precedence rules:
 
 * `timeout:` section:
 - `timeout.timeout-value` (int): value (minutes) inserted by `gha-fix timeout` for jobs missing `timeout-minutes`.
-
 
 ## Example `gha-fix.yaml`
 
@@ -81,8 +102,8 @@ pin:
   # If omitted, gha-fix falls back to GITHUB_API_URL, then https://api.github.com/.
   api-server: "https://github.enterprise.company.com/api/v3/"
 
-  # GitHub token used to call the GitHub API for resolving tags/branches to commit SHAs.
-  # You can also set this via the GITHUB_TOKEN env var (recommended for CI).
+  # GitHub token used to call the GitHub.com API for resolving tags/branches to commit SHAs
+  # (default or fallback when GHES returns 404).
   github-token: "${GITHUB_TOKEN}"
 
   # Owners to ignore during pinning (unless strict-pinning-202508 is enabled for composite actions).
@@ -102,6 +123,11 @@ timeout:
   # Default timeout-minutes value inserted by `gha-fix timeout`
   timeout-value: 5
 ```
+
+Env fallbacks:
+- `pin.github-token` ⇔ `GITHUB_TOKEN`
+- `pin.api-server` ⇔ `GITHUB_API_URL`
+- GHES primary token (env only): `GHES_GITHUB_TOKEN`
 
 ### Using a non-default config path
 
@@ -124,6 +150,7 @@ Supported configuration (highest priority first):
 Example (GHES):
 
 ```bash
+export GHES_GITHUB_TOKEN=...
 export GITHUB_TOKEN=...
 export GITHUB_API_URL="https://github.enterprise.company.com/api/v3/"
 gha-fix pin
@@ -219,4 +246,3 @@ In addition to this inspiration, `gha-fix` was developed to support new features
 ### Release
 
 Create a Git tag and push it. The CI/CD pipeline will take care of the release process.
-
