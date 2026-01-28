@@ -201,7 +201,8 @@ func (r *VersionResolver) listTagsAll(ctx context.Context, owner, repo string) (
 	}
 
 	if r.fallbackRepoService != nil && isNotFound(err) {
-		slog.Debug("primary API returned 404; falling back to GitHub.com", "owner", owner, "repo", repo)
+		// Log both attempts for clarity when GHES misses tags and we retry against GitHub.com.
+		slog.Debug("GHES returned 404; falling back to GitHub.com", "owner", owner, "repo", repo)
 		return fetchAll(r.fallbackRepoService)
 	}
 
