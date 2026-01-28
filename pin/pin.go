@@ -66,13 +66,10 @@ func (p *Pin) Apply(ctx context.Context, input string) (string, bool, error) {
 	// Join lines back into a single string using strings.Join (more efficient than concatenation)
 	output := strings.Join(resultLines, "\n")
 
-	return output, changed, nil
 	if len(errs) > 0 {
 		return output, changed, errors.Join(errs...)
 	}
-
 	return output, changed, nil
- }
 }
 
 func (p *Pin) replaceLine(ctx context.Context, line string) (string, bool, error) {
