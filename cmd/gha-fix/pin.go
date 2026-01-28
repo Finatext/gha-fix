@@ -24,9 +24,9 @@ Usage:
 If no files are specified, all workflow files (.yml or .yaml) in the current directory
 and subdirectories will be processed.
 
-You can customize the behavior with the following options:
+	You can customize the behavior with the following options:
   --github-token: GitHub token for accessing GitHub API (can also be set via GITHUB_TOKEN env var or pin.github-token in config)
-  --ghes-github-token: Github token for Github enterprise sever (can also be set via GHES_GITHUB_TOKEN env var or pin.ghes-github-token in config)
+  --ghes-github-token: GitHub token for GitHub Enterprise Server (can also be set via GHES_GITHUB_TOKEN env var or pin.ghes-github-token in config)
   --ignore-owners: Skip actions from specific owners (e.g., "actions,github")
   --ignore-repos: Skip specific repositories (e.g., "actions/checkout,docker/login-action")
   --strict-pinning-202508: Enable strict SHA pinning for composite actions (GitHub's SHA pinning enforcement policy)
