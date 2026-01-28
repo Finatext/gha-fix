@@ -7,6 +7,7 @@ import (
 
 	ghafix "github.com/Finatext/gha-fix"
 	"github.com/Finatext/gha-fix/internal/githubclient"
+	"github.com/google/go-github/v72/github"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -27,7 +28,7 @@ and subdirectories will be processed.
 
 You can customize the behavior with the following options:
   --github-token: GitHub token for accessing GitHub API (can also be set via GITHUB_TOKEN env var or pin.github-token in config)
-  --ghes-github-token: Github token for Github enterprise sever (can also be set via GHES_GITHUB_TOKEN env var or pin.ghas-github-token in config)
+  --ghes-github-token: Github token for Github enterprise sever (can also be set via GHES_GITHUB_TOKEN env var or pin.ghes-github-token in config)
   --ignore-owners: Skip actions from specific owners (e.g., "actions,github")
   --ignore-repos: Skip specific repositories (e.g., "actions/checkout,docker/login-action")
   --strict-pinning-202508: Enable strict SHA pinning for composite actions (GitHub's SHA pinning enforcement policy)
@@ -74,9 +75,9 @@ Note: GITHUB_TOKEN environment variable is required to fetch tags and commit SHA
 				os.Exit(1)
 			}
 		} else {
-			primaryToken = os.Getenv("GHES_GITHUB_TOKEN")
+			primaryToken = viper.GetString("pin.ghes-github-token")
 			if primaryToken == "" {
-				slog.Error("GHES_GITHUB_TOKEN is required when api-server is not https://api.github.com/. Set GHES_GITHUB_TOKEN for your GHES API.")
+				slog.Error("GHES_GITHUB_TOKEN is required when api-server is not https://api.github.com/. Set GHES_GITHUB_TOKEN or use --ghes-github-token flag or pin.ghes-github-token in config.")
 				os.Exit(1)
 			}
 			fallbackToken = viper.GetString("pin.github-token") // GITHUB_TOKEN
@@ -92,7 +93,7 @@ Note: GITHUB_TOKEN environment variable is required to fetch tags and commit SHA
 			os.Exit(1)
 		}
 
-		var fallbackClient *githubclient.Client
+		var fallbackClient *github.Client
 		if !isDefaultAPI {
 			fallbackClient, err = githubclient.NewClient(fallbackToken, githubclient.DefaultAPIBaseURL)
 			if err != nil {
@@ -141,6 +142,11 @@ func init() {
 	// Bind GITHUB_TOKEN environment variable directly to pin.github-token
 	// This avoids the prefix from viper.SetEnvPrefix
 	cobra.CheckErr(viper.BindEnv("pin.github-token", "GITHUB_TOKEN"))
+
+	// GHES token (used when api-server is not https://api.github.com/)
+	pinCmd.Flags().String("ghes-github-token", "", "GitHub token for GHES API calls (can also be set via GHES_GITHUB_TOKEN env var or pin.ghes-github-token in config)")
+	cobra.CheckErr(viper.BindPFlag("pin.ghes-github-token", pinCmd.Flags().Lookup("ghes-github-token")))
+	cobra.CheckErr(viper.BindEnv("pin.ghes-github-token", "GHES_GITHUB_TOKEN"))
 
 	pinCmd.Flags().StringSlice("ignore-owners", []string{}, "Comma-separated list of owners to ignore")
 	pinCmd.Flags().StringSlice("ignore-repos", []string{}, "Comma-separated list of repos to ignore in format owner/repo")
