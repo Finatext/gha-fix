@@ -23,8 +23,13 @@ type Pin struct {
 	strictPinning202508 bool
 }
 
-func NewPin(client *gogithub.Client, ignoreOwners, ignoreRepos []string, strictPinning202508 bool) Pin {
-	resolver := pin.NewVersionResolver(client.Repositories)
+// NewPin creates a pin command with primary GitHub client and optional fallback GitHub.com client.
+func NewPin(primaryClient *gogithub.Client, fallbackClient *gogithub.Client, ignoreOwners, ignoreRepos []string, strictPinning202508 bool) Pin {
+	var fallbackRepos *gogithub.RepositoriesService
+	if fallbackClient != nil {
+		fallbackRepos = fallbackClient.Repositories
+	}
+	resolver := pin.NewVersionResolver(primaryClient.Repositories, fallbackRepos)
 	return Pin{
 		resolver:            &resolver,
 		ignoreOwners:        ignoreOwners,

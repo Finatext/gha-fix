@@ -3,6 +3,7 @@ package pin
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -79,14 +80,16 @@ type cacheKey struct {
 }
 
 type VersionResolver struct {
-	repoService RepositoryService
-	cache       map[cacheKey]ResolvedVersion
+	repoService         RepositoryService
+	fallbackRepoService RepositoryService
+	cache               map[cacheKey]ResolvedVersion
 }
 
-func NewVersionResolver(repoService RepositoryService) VersionResolver {
+func NewVersionResolver(repoService RepositoryService, fallbackRepoService RepositoryService) VersionResolver {
 	return VersionResolver{
-		repoService: repoService,
-		cache:       make(map[cacheKey]ResolvedVersion),
+		repoService:         repoService,
+		fallbackRepoService: fallbackRepoService,
+		cache:               make(map[cacheKey]ResolvedVersion),
 	}
 }
 
@@ -123,7 +126,7 @@ func (r *VersionResolver) ResolveVersion(ctx context.Context, def ActionDef) (Re
 
 	tags, err := r.listSemverTagsAll(ctx, def.Owner, def.Repo)
 	if err != nil {
-		return ResolvedVersion{}, err
+		return ResolvedVersion{}, errors.Wrapf(err, "failed to resolve version %s for %s/%s", def.RefOrSHA, def.Owner, def.Repo)
 	}
 
 	latest, err := findLatestTag(*version, tags)
@@ -163,32 +166,54 @@ func (r *VersionResolver) listSemverTagsAll(ctx context.Context, owner, repo str
 }
 
 func (r *VersionResolver) listTagsAll(ctx context.Context, owner, repo string) ([]gogithub.RepositoryTag, error) {
-	opts := &gogithub.ListOptions{
-		PerPage: 100,
-	}
-	var allTags []*gogithub.RepositoryTag
+	fetchAll := func(svc RepositoryService) ([]gogithub.RepositoryTag, error) {
+		opts := &gogithub.ListOptions{
+			PerPage: 100,
+		}
+		var allTags []*gogithub.RepositoryTag
 
-	for {
-		slog.Debug("fetching tags for version resolution", "owner", owner, "repo", repo, "page", opts.Page)
-		tags, resp, err := r.repoService.ListTags(ctx, owner, repo, opts)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to list tags for %s/%s", owner, repo)
+		for {
+			slog.Debug("fetching tags for version resolution", "owner", owner, "repo", repo, "page", opts.Page)
+			tags, resp, err := svc.ListTags(ctx, owner, repo, opts)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to list tags for %s/%s", owner, repo)
+			}
+
+			allTags = append(allTags, tags...)
+
+			if resp.NextPage == 0 {
+				break
+			}
+			opts.Page = resp.NextPage
 		}
 
-		allTags = append(allTags, tags...)
-
-		if resp.NextPage == 0 {
-			break
+		result := make([]gogithub.RepositoryTag, len(allTags))
+		for i, tag := range allTags {
+			result[i] = *tag
 		}
-		opts.Page = resp.NextPage
+
+		return result, nil
 	}
 
-	result := make([]gogithub.RepositoryTag, len(allTags))
-	for i, tag := range allTags {
-		result[i] = *tag
+	tags, err := fetchAll(r.repoService)
+	if err == nil {
+		return tags, nil
 	}
 
-	return result, nil
+	if r.fallbackRepoService != nil && isNotFound(err) {
+		slog.Debug("primary API returned 404; falling back to GitHub.com", "owner", owner, "repo", repo)
+		return fetchAll(r.fallbackRepoService)
+	}
+
+	return nil, err
+}
+
+func isNotFound(err error) bool {
+	var ghErr *gogithub.ErrorResponse
+	if errors.As(err, &ghErr) {
+		return ghErr.Response != nil && ghErr.Response.StatusCode == http.StatusNotFound
+	}
+	return false
 }
 
 var NoTagsFoundError = errors.New("repository has no tags")
