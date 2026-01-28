@@ -30,7 +30,7 @@ and subdirectories will be processed.
   --ignore-owners: Skip actions from specific owners (e.g., "actions,github")
   --ignore-repos: Skip specific repositories (e.g., "actions/checkout,docker/login-action")
   --strict-pinning-202508: Enable strict SHA pinning for composite actions (GitHub's SHA pinning enforcement policy)
-  --api-server: Full GitHub API base URL assuming https://api.github.com when not specified (e.g., https://github.enterprise.company.com/api/v3)
+  --api-server: Full GitHub API base URL (defaults to https://api.github.com/ when not specified, e.g., https://github.enterprise.company.com/api/v3)
 
 The --strict-pinning-202508 option implements support for GitHub's SHA pinning enforcement policy
 announced in August 2025. When enabled:
