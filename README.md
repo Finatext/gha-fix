@@ -46,7 +46,8 @@ If no files are specified, all workflow files (.yml or .yaml) in the current dir
 ### Flags
 
 - `--api-server` — Full GitHub API base URL (e.g., `https://github.enterprise.company.com/api/v3/`).
-- `--github-token` — GitHub.com token (also via `GITHUB_TOKEN`).
+- `--ghes-github-token` — Token for GHES API requests (also via `GHES_GITHUB_TOKEN`).
+- `--github-token` — GitHub.com token for default and fallback requests (also via `GITHUB_TOKEN`).
 - Other existing flags remain unchanged (ignore-owners, ignore-repos, strict-pinning-202508, etc.).
 
 ### GHES fallback behavior
