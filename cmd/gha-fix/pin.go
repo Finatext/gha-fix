@@ -18,9 +18,7 @@ var pinCmd = &cobra.Command{
 	Long: `Pin GitHub Actions in workflow files to specific commit SHAs to enhance security and reliability.
 
 This command scans workflow files for GitHub Actions and replaces version references with specific commit SHAs.
-It supports various options to customize its behavior. For example, 'owner/repo@v1' with specific commit SHAs 
-like 'owner/repo@8843d7f53bd34e3b78f2acee556ba5d53feae7c4'.
-It supports various options to customize its behavior.
+It supports various options to customize its behavior. For example, it can replace 'owner/repo@v1' with a specific commit SHA like 'owner/repo@8843d7f53bd34e3b78f2acee556ba5d53feae7c4'.
 Usage:
   pin [file1 file2 ...]
 If no files are specified, all workflow files (.yml or .yaml) in the current directory
