@@ -115,7 +115,13 @@ func (r *VersionResolver) ResolveVersion(ctx context.Context, def ActionDef) (Re
 	// The ref is not a version tag, so treat it as a branch name.
 	if version == nil {
 		slog.Debug("fetching commit SHA for branch", "owner", def.Owner, "repo", def.Repo, "ref", def.RefOrSHA)
+		// inside ResolveVersion, branch path (version == nil)
 		sha, _, err := r.repoService.GetCommitSHA1(ctx, def.Owner, def.Repo, def.RefOrSHA, "")
+		if err != nil && r.fallbackRepoService != nil && isNotFound(err) {
+			slog.Debug("GHES API returned 404 for commit; falling back to GitHub.com",
+				"owner", def.Owner, "repo", def.Repo, "ref", def.RefOrSHA)
+			sha, _, err = r.fallbackRepoService.GetCommitSHA1(ctx, def.Owner, def.Repo, def.RefOrSHA, "")
+		}
 		if err != nil {
 			return ResolvedVersion{}, errors.Wrapf(err, "failed to get commit SHA for %s/%s@%s", def.Owner, def.Repo, def.RefOrSHA)
 		}
