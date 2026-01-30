@@ -2,6 +2,7 @@ package pin
 
 import (
 	"context"
+	"log/slog"
 	"regexp"
 	"slices"
 	"strings"
