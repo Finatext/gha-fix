@@ -195,8 +195,13 @@ func init() {
 	cobra.CheckErr(viper.BindEnv("pin.ghes-github-token", "GHES_GITHUB_TOKEN"))
 
 	pinCmd.Flags().StringSlice("ignore-owners", []string{}, "Comma-separated list of owners to ignore")
+	cobra.CheckErr(viper.BindPFlag("pin.ignore-owners", pinCmd.Flags().Lookup("ignore-owners")))
+
 	pinCmd.Flags().StringSlice("ignore-repos", []string{}, "Comma-separated list of repos to ignore in format owner/repo")
+	cobra.CheckErr(viper.BindPFlag("pin.ignore-repos", pinCmd.Flags().Lookup("ignore-repos")))
+
 	pinCmd.Flags().Bool("strict-pinning-202508", false, "Enable strict SHA pinning for composite actions (GitHub's SHA pinning enforcement policy)")
+	cobra.CheckErr(viper.BindPFlag("pin.strict-pinning-202508", pinCmd.Flags().Lookup("strict-pinning-202508")))
 
 	// Full GitHub API base URL (GHES support)
 	pinCmd.Flags().String("api-server", "", "Full GitHub API base URL (e.g., https://github.enterprise.company.com/api/v3/)")
