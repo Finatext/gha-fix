@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"os"
+	"strings"
 
 	ghafix "github.com/Finatext/gha-fix"
 	"github.com/Finatext/gha-fix/internal/githubclient"
@@ -30,6 +31,7 @@ and subdirectories will be processed.
   --ghes-github-token: GitHub token for GitHub Enterprise Server (can also be set via GHES_GITHUB_TOKEN env var or pin.ghes-github-token in config)
   --ignore-owners: Skip actions from specific owners (e.g., "actions,github")
   --ignore-repos: Skip specific repositories (e.g., "actions/checkout,docker/login-action")
+  --restrict-to-files: Only process the specified workflow files (e.g., ".github/workflows/a.yml,.github/workflows/b.yml")
   --strict-pinning-202508: Enable strict SHA pinning for composite actions (GitHub's SHA pinning enforcement policy)
   --api-server: Full GitHub API base URL (defaults to https://api.github.com/ when not specified, e.g., https://github.enterprise.company.com/api/v3)
 
@@ -51,17 +53,20 @@ Note: GITHUB_TOKEN environment variable is required to fetch tags and commit SHA
 		if slog.Default().Enabled(ctx, slog.LevelDebug) {
 			ownersFlag, _ := cmd.Flags().GetStringSlice("ignore-owners")
 			reposFlag, _ := cmd.Flags().GetStringSlice("ignore-repos")
+			restrictFlag, _ := cmd.Flags().GetStringSlice("restrict-to-files")
 			strictFlag, _ := cmd.Flags().GetBool("strict-pinning-202508")
-		
+
 			slog.Debug("cobra parsed flags (pin command)",
 				"ignore-owners(flag)", ownersFlag,
 				"ignore-repos(flag)", reposFlag,
+				"restrict-to-files(flag)", restrictFlag,
 				"strict-pinning-202508(flag)", strictFlag,
 			)
-		
+
 			slog.Debug("viper effective values (pin command)",
 				"pin.ignore-owners(viper)", viper.GetStringSlice("pin.ignore-owners"),
 				"pin.ignore-repos(viper)", viper.GetStringSlice("pin.ignore-repos"),
+				"pin.restrict-to-files(viper)", viper.GetStringSlice("pin.restrict-to-files"),
 				"pin.strict-pinning-202508(viper)", viper.GetBool("pin.strict-pinning-202508"),
 				"ignore-dirs(viper)", viper.GetStringSlice("ignore-dirs"),
 				"pin.api-server(viper)", viper.GetString("pin.api-server"),
@@ -125,7 +130,18 @@ Note: GITHUB_TOKEN environment variable is required to fetch tags and commit SHA
 		ignoreOwners := viper.GetStringSlice("pin.ignore-owners")
 		ignoreRepos := viper.GetStringSlice("pin.ignore-repos")
 		ignoreDirs := viper.GetStringSlice("ignore-dirs") // Use common ignore-dirs configuration
+		restrictToFiles := trimNonEmpty(viper.GetStringSlice("pin.restrict-to-files"))
 		strictPinning202508 := viper.GetBool("pin.strict-pinning-202508")
+
+		// If --restrict-to-files is set, only process those files.
+		if len(restrictToFiles) > 0 && len(args) > 0 {
+			slog.Error("cannot combine --restrict-to-files with positional file arguments; use one or the other")
+			os.Exit(1)
+		}
+		filePaths := args
+		if len(restrictToFiles) > 0 {
+			filePaths = restrictToFiles
+		}
 
 		pinCmd := ghafix.NewPinCommand(primaryClient, fallbackClient, ghafix.PinOptions{
 			IgnoreOwners:        ignoreOwners,
@@ -137,7 +153,7 @@ Note: GITHUB_TOKEN environment variable is required to fetch tags and commit SHA
 		// Add full logging of the config before starting the execution
 		if slog.Default().Enabled(ctx, slog.LevelDebug) {
 			settings := viper.AllSettings()
-	
+
 			// Best-effort redaction. (Covers the config keys used by this tool.)
 			if pin, ok := settings["pin"].(map[string]any); ok {
 				if _, exists := pin["github-token"]; exists {
@@ -147,12 +163,12 @@ Note: GITHUB_TOKEN environment variable is required to fetch tags and commit SHA
 					pin["ghes-github-token"] = "***REDACTED***"
 				}
 			}
-			
+
 			// Also avoid leaking env-derived values that might appear elsewhere.
 			if _, exists := settings["github-token"]; exists {
 				settings["github-token"] = "***REDACTED***"
 			}
-			
+
 			b, err := json.MarshalIndent(settings, "", "  ")
 			if err != nil {
 				slog.Debug("failed to marshal viper settings", "error", err)
@@ -161,7 +177,7 @@ Note: GITHUB_TOKEN environment variable is required to fetch tags and commit SHA
 			}
 		}
 
-		result, err := pinCmd.Run(ctx, args)
+		result, err := pinCmd.Run(ctx, filePaths)
 		if err != nil {
 			slog.Error("failed to pin actions", "error", err)
 			os.Exit(1)
@@ -200,10 +216,25 @@ func init() {
 	pinCmd.Flags().StringSlice("ignore-repos", []string{}, "Comma-separated list of repos to ignore in format owner/repo")
 	cobra.CheckErr(viper.BindPFlag("pin.ignore-repos", pinCmd.Flags().Lookup("ignore-repos")))
 
+	pinCmd.Flags().StringSlice("restrict-to-files", []string{}, "Comma-separated list of workflow file paths to process (restricts processing to these files only)")
+	cobra.CheckErr(viper.BindPFlag("pin.restrict-to-files", pinCmd.Flags().Lookup("restrict-to-files")))
+
 	pinCmd.Flags().Bool("strict-pinning-202508", false, "Enable strict SHA pinning for composite actions (GitHub's SHA pinning enforcement policy)")
 	cobra.CheckErr(viper.BindPFlag("pin.strict-pinning-202508", pinCmd.Flags().Lookup("strict-pinning-202508")))
 
 	// Full GitHub API base URL (GHES support)
 	pinCmd.Flags().String("api-server", "", "Full GitHub API base URL (e.g., https://github.enterprise.company.com/api/v3/)")
 	cobra.CheckErr(viper.BindPFlag("pin.api-server", pinCmd.Flags().Lookup("api-server")))
+}
+
+func trimNonEmpty(in []string) []string {
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		t := strings.TrimSpace(s)
+		if t == "" {
+			continue
+		}
+		out = append(out, t)
+	}
+	return out
 }

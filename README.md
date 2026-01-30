@@ -81,6 +81,7 @@ Configuration sources follow typical precedence rules:
   - If neither is set, defaults to `https://api.github.com/`.
 - `pin.ignore-owners` (string list): owners to skip pinning (e.g., `actions`, `github`).
 - `pin.ignore-repos` (string list): repositories to skip pinning, format `owner/repo`.
+- `pin.restrict-to-files` (string list): restrict processing to only these workflow files (useful for PR changed-files workflows).
 - `pin.strict-pinning-202508` (bool): enables strict SHA pinning behavior for composite actions (see “Strict SHA Pinning” section).
 
 * `timeout:` section:
@@ -116,6 +117,12 @@ pin:
   ignore-repos:
     - actions/checkout
     - docker/login-action
+
+  # Restrict processing to specific workflow files (optional).
+  # If set, gha-fix will only process these files.
+  restrict-to-files:
+    - .github/workflows/build.yml
+    - .github/workflows/deploy.yml
 
   # Enable strict SHA pinning enforcement behavior for composite actions (see below).
   strict-pinning-202508: false
@@ -192,6 +199,9 @@ gha-fix pin
 
 # Ignore specific owners
 gha-fix pin --ignore-owners=actions,github
+
+# Restrict processing to specific files (comma-separated list)
+gha-fix pin --restrict-to-files=.github/workflows/build.yml,.github/workflows/deploy.yml
 
 # Enable strict SHA pinning for composite actions (GitHub's SHA pinning enforcement policy)
 gha-fix pin --strict-pinning-202508
