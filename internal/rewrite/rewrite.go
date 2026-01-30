@@ -33,12 +33,15 @@ func Rewrite(ctx context.Context, filePaths []string, ignoreDirs []string, f Fix
 	}
 
 	res := RewriteResult{}
+	var errs []error
 
 	for _, filePath := range filePaths {
 		slog.Debug("processing file", "path", filePath)
 		changed, err := processFile(ctx, filePath, f)
 		if err != nil {
-			return RewriteResult{}, errors.Wrapf(err, "failed to process file: %s", filePath)
+			// Collect the error but continue processing remaining files.
+			errs = append(errs, errors.Wrapf(err, "failed to process file: %s", filePath))
+			continue
 		}
 
 		if changed {
@@ -46,6 +49,10 @@ func Rewrite(ctx context.Context, filePaths []string, ignoreDirs []string, f Fix
 			res.Changed = true
 			res.FileCount++
 		}
+	}
+
+	if len(errs) > 0 {
+		return res, errors.Join(errs...)
 	}
 
 	return res, nil
