@@ -113,6 +113,33 @@ Note: GITHUB_TOKEN environment variable is required to fetch tags and commit SHA
 			StrictPinning202508: strictPinning202508,
 		})
 
+		// Add full logging of the config before starting the execution
+		if slog.Default().Enabled(ctx, slog.LevelDebug) {
+			settings := viper.AllSettings()
+	
+			// Best-effort redaction. (Covers the config keys used by this tool.)
+			if pin, ok := settings["pin"].(map[string]any); ok {
+				if _, exists := pin["github-token"]; exists {
+					pin["github-token"] = "***REDACTED***"
+				}
+				if _, exists := pin["ghes-github-token"]; exists {
+					pin["ghes-github-token"] = "***REDACTED***"
+				}
+			}
+			
+			// Also avoid leaking env-derived values that might appear elsewhere.
+			if _, exists := settings["github-token"]; exists {
+				settings["github-token"] = "***REDACTED***"
+			}
+			
+			b, err := json.MarshalIndent(settings, "", "  ")
+			if err != nil {
+				slog.Debug("failed to marshal viper settings", "error", err)
+			} else {
+				slog.Debug("viper all settings", "json", string(b))
+			}
+		}
+
 		result, err := pinCmd.Run(ctx, args)
 		if err != nil {
 			slog.Error("failed to pin actions", "error", err)
