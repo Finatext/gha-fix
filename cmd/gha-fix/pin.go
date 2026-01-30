@@ -46,7 +46,8 @@ Global options:
 
 Note: GITHUB_TOKEN environment variable is required to fetch tags and commit SHAs from GitHub.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// At the start of pinCmd.Run (inside Run: func(cmd *cobra.Command, args []string) { ... })
+		ctx := context.Background()
+
 		if slog.Default().Enabled(ctx, slog.LevelDebug) {
 			ownersFlag, _ := cmd.Flags().GetStringSlice("ignore-owners")
 			reposFlag, _ := cmd.Flags().GetStringSlice("ignore-repos")
@@ -66,8 +67,6 @@ Note: GITHUB_TOKEN environment variable is required to fetch tags and commit SHA
 				"pin.api-server(viper)", viper.GetString("pin.api-server"),
 			)
 		}
-		
-		ctx := context.Background()
 
 		// Resolve API base
 		apiServer := viper.GetString("pin.api-server")
