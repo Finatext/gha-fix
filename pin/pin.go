@@ -2,6 +2,7 @@ package pin
 
 import (
 	"context"
+	"log/slog"
 	"regexp"
 	"slices"
 	"strings"
@@ -23,8 +24,13 @@ type Pin struct {
 	strictPinning202508 bool
 }
 
-func NewPin(client *gogithub.Client, ignoreOwners, ignoreRepos []string, strictPinning202508 bool) Pin {
-	resolver := pin.NewVersionResolver(client.Repositories)
+// NewPin creates a pin command with primary GitHub client and optional fallback GitHub.com client.
+func NewPin(primaryClient *gogithub.Client, fallbackClient *gogithub.Client, ignoreOwners, ignoreRepos []string, strictPinning202508 bool) Pin {
+	var fallbackRepos *gogithub.RepositoriesService
+	if fallbackClient != nil {
+		fallbackRepos = fallbackClient.Repositories
+	}
+	resolver := pin.NewVersionResolver(primaryClient.Repositories, fallbackRepos)
 	return Pin{
 		resolver:            &resolver,
 		ignoreOwners:        ignoreOwners,
@@ -40,10 +46,15 @@ func (p *Pin) Apply(ctx context.Context, input string) (string, bool, error) {
 
 	changed := false
 	resultLines := make([]string, 0, len(lines))
+
+	var errs []error
 	for _, line := range lines {
 		modifiedLine, lineChanged, err := p.replaceLine(ctx, line)
 		if err != nil {
-			return "", false, err
+			// Collect errors but continue processing remaining actions/lines.
+			errs = append(errs, err)
+			resultLines = append(resultLines, line)
+			continue
 		}
 
 		if lineChanged {
@@ -56,6 +67,9 @@ func (p *Pin) Apply(ctx context.Context, input string) (string, bool, error) {
 	// Join lines back into a single string using strings.Join (more efficient than concatenation)
 	output := strings.Join(resultLines, "\n")
 
+	if len(errs) > 0 {
+		return output, changed, errors.Join(errs...)
+	}
 	return output, changed, nil
 }
 
@@ -65,6 +79,17 @@ func (p *Pin) replaceLine(ctx context.Context, line string) (string, bool, error
 		return line, false, nil // No action definition found, return the line unchanged
 	}
 	def := parsed.def
+
+	// log debug to show exactly what the current replacement is... 
+	slog.Debug("pin decision",
+		"owner", def.Owner,
+		"repo", def.Repo,
+		"ref", def.RefOrSHA,
+		"is_reusable_workflow", def.IsReusableWorkflow(),
+		"strict_pinning_202508", p.strictPinning202508,
+		"ignore_owners", p.ignoreOwners,
+		"ignore_repos", p.ignoreRepos,
+	)
 
 	// Apply ignore owners check (skip for composite actions when strict pinning is enabled)
 	if !p.strictPinning202508 || def.IsReusableWorkflow() {

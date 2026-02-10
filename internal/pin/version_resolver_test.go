@@ -23,7 +23,7 @@ func TestVersionResolver_ResolveVersion(t *testing.T) {
 			GetCommitSHA1(gomock.Any(), "actions", "checkout", "main", "").
 			Return("11bd71901bbe5b1630ceea73d27597364c9af683", &gogithub.Response{}, nil).Times(1)
 
-		resolver := NewVersionResolver(mockRepo)
+		resolver := NewVersionResolver(mockRepo, nil)
 
 		// First call should hit the API
 		def := ActionDef{
@@ -60,7 +60,7 @@ func TestVersionResolver_ResolveVersion(t *testing.T) {
 			ListTags(gomock.Any(), "actions", "checkout", gomock.Any()).
 			Return(tags, &gogithub.Response{NextPage: 0}, nil).Times(1)
 
-		resolver := NewVersionResolver(mockRepo)
+		resolver := NewVersionResolver(mockRepo, nil)
 
 		def := ActionDef{
 			Owner:    "actions",
@@ -166,7 +166,7 @@ func TestVersionResolver_ResolveVersion(t *testing.T) {
 				tt.mockSetup(mockRepo)
 			}
 
-			resolver := NewVersionResolver(mockRepo)
+			resolver := NewVersionResolver(mockRepo, nil)
 
 			result, err := resolver.ResolveVersion(context.Background(), tt.actionDef)
 			require.NoError(t, err)
@@ -197,7 +197,7 @@ func TestVersionResolver_listSemverTagsAll(t *testing.T) {
 			createTag("not-semver", "sha4"), // This should be filtered out
 		}, &gogithub.Response{NextPage: 0}, nil)
 
-	resolver := NewVersionResolver(mockRepo)
+	resolver := NewVersionResolver(mockRepo, nil)
 
 	tags, err := resolver.listSemverTagsAll(context.Background(), "owner", "repo")
 
