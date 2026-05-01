@@ -3,8 +3,8 @@ module github.com/Finatext/gha-fix
 go 1.25.0
 
 require (
-	github.com/Masterminds/semver/v3 v3.4.0
-	github.com/cockroachdb/errors v1.12.0
+	github.com/Masterminds/semver/v3 v3.5.0
+	github.com/cockroachdb/errors v1.13.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/google/go-github/v72 v72.0.0
 	github.com/phsym/console-slog v0.3.1
@@ -12,7 +12,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/mock v0.6.0
-	golang.org/x/term v0.41.0
+	golang.org/x/term v0.42.0
 )
 
 require (
@@ -20,7 +20,7 @@ require (
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
-	github.com/getsentry/sentry-go v0.27.0 // indirect
+	github.com/getsentry/sentry-go v0.46.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
@@ -38,7 +38,7 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/sys v0.42.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
