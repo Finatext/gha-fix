@@ -28,10 +28,11 @@ type PinCommand struct {
 	options PinOptions
 }
 
-// NewPinCommand creates a new PinCommand with the provided GitHub client and options.
-func NewPinCommand(client *gogithub.Client, opts PinOptions) PinCommand {
+// NewPinCommand creates a new PinCommand with the provided GitHub clients and options.
+// primaryClient is required. fallbackClient (GitHub.com) is optional and used for tag resolution fallback.
+func NewPinCommand(primaryClient *gogithub.Client, fallbackClient *gogithub.Client, opts PinOptions) PinCommand {
 	return PinCommand{
-		pin:     pin.NewPin(client, opts.IgnoreOwners, opts.IgnoreRepos, opts.StrictPinning202508),
+		pin:     pin.NewPin(primaryClient, fallbackClient, opts.IgnoreOwners, opts.IgnoreRepos, opts.StrictPinning202508),
 		options: opts,
 	}
 }
