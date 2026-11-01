@@ -12,7 +12,7 @@ gha-fix automates security and maintenance fixes in GitHub Actions workflows. It
 ### Using Go
 
 ```bash
-go install github.com/Finatext/gha-fix@latest
+go install github.com/Finatext/gha-fix/cmd/gha-fix@latest
 ```
 
 ## Usage
